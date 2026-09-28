@@ -205,22 +205,16 @@ void Game::update(float elapsed) {
 			p2.velocity += 0.5f * delta_v12;
 			p1.velocity -= 0.5f * delta_v12;
 		}
-		//player/arena collisions:
-		if (p1.position.x < ArenaMin.x + PlayerRadius) {
-			p1.position.x = ArenaMin.x + PlayerRadius;
-			p1.velocity.x = std::abs(p1.velocity.x);
+		//wrap around the arena:
+		if (p1.position.x < ArenaMin.x - PlayerRadius) {
+			p1.position.x = ArenaMax.x + PlayerRadius;
+		} else if (p1.position.x > ArenaMax.x + PlayerRadius) {
+			p1.position.x = ArenaMin.x - PlayerRadius;
 		}
-		if (p1.position.x > ArenaMax.x - PlayerRadius) {
-			p1.position.x = ArenaMax.x - PlayerRadius;
-			p1.velocity.x =-std::abs(p1.velocity.x);
-		}
-		if (p1.position.y < ArenaMin.y + PlayerRadius) {
-			p1.position.y = ArenaMin.y + PlayerRadius;
-			p1.velocity.y = std::abs(p1.velocity.y);
-		}
-		if (p1.position.y > ArenaMax.y - PlayerRadius) {
-			p1.position.y = ArenaMax.y - PlayerRadius;
-			p1.velocity.y =-std::abs(p1.velocity.y);
+		if (p1.position.y < ArenaMin.y - PlayerRadius) {
+			p1.position.y = ArenaMax.y + PlayerRadius;
+		} else if (p1.position.y > ArenaMax.y + PlayerRadius) {
+			p1.position.y = ArenaMin.y - PlayerRadius;
 		}
 	}
 
