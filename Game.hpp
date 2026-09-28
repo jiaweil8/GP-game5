@@ -50,7 +50,8 @@ struct Player {
 struct Game {
 	enum class RoundState : uint8_t {
 		Waiting,
-		Playing
+		Playing,
+		RoundOver
 	};
 
 	std::list< Player > players; //(using list so they can have stable addresses)
@@ -58,8 +59,10 @@ struct Game {
 	void remove_player(Player *); //remove player from game (may also, e.g., play some despawn anim)
 
 	Player *bomb_holder = nullptr;
-	float bomb_timer = 10.0f;
+	Player *round_loser = nullptr;
+	float bomb_timer = 30.0f;
 	float bomb_transfer_cooldown = 0.0f;
+	float round_over_timer = 0.0f;
 	RoundState round_state = RoundState::Waiting;
 
 	std::mt19937 mt; //used for spawning players
@@ -84,6 +87,7 @@ struct Game {
 	inline static constexpr float PlayerAccelHalflife = 0.25f;
 	inline static constexpr float BombTime = 30.0f;
 	inline static constexpr float BombTransferCooldown = 0.5f;
+	inline static constexpr float RoundOverTime = 3.0f;
 	
 
 	//---- communication helpers ----

@@ -95,8 +95,9 @@ Player *Game::spawn_player() {
 
 	player.name = "Player " + std::to_string(next_player_number++);
 
-	if (bomb_holder == nullptr) {
-		bomb_holder = &player;
+	if (round_state == RoundState::Waiting && players.size() >= 2) {
+		bomb_holder = &players.front();
+		round_loser = nullptr;
 		bomb_timer = BombTime;
 		bomb_transfer_cooldown = 0.0f;
 		round_state = RoundState::Playing;
@@ -107,6 +108,7 @@ Player *Game::spawn_player() {
 
 void Game::remove_player(Player *player) {
 	bool removed_bomb_holder = (player == bomb_holder);
+	bool removed_round_loser = (player == round_loser);
 	bool found = false;
 	for (auto pi = players.begin(); pi != players.end(); ++pi) {
 		if (&*pi == player) {
@@ -117,24 +119,52 @@ void Game::remove_player(Player *player) {
 	}
 	assert(found);
 
-	if (removed_bomb_holder) {
-		if (players.empty()) {
-			bomb_holder = nullptr;
-			bomb_timer = BombTime;
-			bomb_transfer_cooldown = 0.0f;
-			round_state = RoundState::Waiting;
-		} else {
-			bomb_holder = &players.front();
-			bomb_timer = BombTime;
-			bomb_transfer_cooldown = 0.0f;
-		}
+	if (players.size() < 2) {
+		bomb_holder = nullptr;
+		round_loser = nullptr;
+		bomb_timer = BombTime;
+		bomb_transfer_cooldown = 0.0f;
+		round_over_timer = 0.0f;
+		round_state = RoundState::Waiting;
+		return;
 	}
+	if (removed_bomb_holder) {
+		bomb_holder = &players.front();
+		bomb_timer = BombTime;
+		bomb_transfer_cooldown = 0.0f;
+	}
+	if (removed_round_loser) round_loser = nullptr;
 }
 
 void Game::update(float elapsed) {
 	if (round_state == RoundState::Playing && bomb_holder != nullptr) {
 		bomb_timer -= elapsed;
-		if (bomb_timer < 0.0f) bomb_timer = 0.0f;
+		if (bomb_timer <= 0.0f) {
+			bomb_timer = 0.0f;
+			round_loser = bomb_holder;
+			bomb_holder = nullptr;
+			bomb_transfer_cooldown = 0.0f;
+			round_over_timer = RoundOverTime;
+			round_state = RoundState::RoundOver;
+		}
+	} else if (round_state == RoundState::RoundOver) {
+		round_over_timer -= elapsed;
+		if (round_over_timer <= 0.0f) {
+			bomb_holder = &players.front();
+			bool use_next_player = false;
+			for (auto &player : players) {
+				if (use_next_player) {
+					bomb_holder = &player;
+					break;
+				}
+				if (&player == round_loser) use_next_player = true;
+			}
+			round_loser = nullptr;
+			bomb_timer = BombTime;
+			bomb_transfer_cooldown = 0.0f;
+			round_over_timer = 0.0f;
+			round_state = RoundState::Playing;
+		}
 	}
 	if (bomb_transfer_cooldown > 0.0f) {
 		bomb_transfer_cooldown -= elapsed;
@@ -239,6 +269,7 @@ void Game::send_state_message(Connection *connection_, Player *connection_player
 		connection.send(player.velocity);
 		connection.send(player.color);
 		connection.send(uint8_t(&player == bomb_holder));
+		connection.send(uint8_t(&player == round_loser));
 	
 		//NOTE: can't just 'send(name)' because player.name is not plain-old-data type.
 		//effectively: truncates player name to 255 chars
@@ -295,6 +326,7 @@ bool Game::recv_state_message(Connection *connection_) {
 
 	players.clear();
 	bomb_holder = nullptr;
+	round_loser = nullptr;
 	uint8_t player_count;
 	read(&player_count);
 	for (uint8_t i = 0; i < player_count; ++i) {
@@ -306,6 +338,9 @@ bool Game::recv_state_message(Connection *connection_) {
 		uint8_t has_bomb;
 		read(&has_bomb);
 		if (has_bomb) bomb_holder = &player;
+		uint8_t lost_round;
+		read(&lost_round);
+		if (lost_round) round_loser = &player;
 		uint8_t name_len;
 		read(&name_len);
 		//n.b. would probably be more efficient to directly copy from recv_buffer, but I think this is clearer:

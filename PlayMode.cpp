@@ -165,6 +165,9 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 					);
 				}
 			}
+			if (&player == game.round_loser) {
+				draw_text(player.position + glm::vec2(-0.12f, 0.12f), "BOOM!", 0.12f);
+			}
 			if (&player == &game.players.front()) {
 				//mark current player (which server sends first):
 				lines.draw(
@@ -189,11 +192,16 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 			draw_text(player.position + glm::vec2(0.0f, -0.1f + Game::PlayerRadius), player.name, 0.09f);
 		}
 
-		std::string status = "Waiting";
-		if (game.round_state == Game::RoundState::Playing) status = "Playing";
+		std::string status = "Waiting for another player";
+		if (game.round_state == Game::RoundState::Playing) {
+			status = "Playing  Bomb: " + std::to_string(int(std::ceil(game.bomb_timer)));
+		} else if (game.round_state == Game::RoundState::RoundOver) {
+			status = "Round over";
+			if (game.round_loser != nullptr) status = game.round_loser->name + " lost!";
+		}
 		draw_text(
 			glm::vec2(Game::ArenaMin.x + 0.03f, Game::ArenaMax.y - 0.12f),
-			status + "  Bomb: " + std::to_string(int(std::ceil(game.bomb_timer))),
+			status,
 			0.09f
 		);
 	}
