@@ -98,6 +98,7 @@ Player *Game::spawn_player() {
 	if (bomb_holder == nullptr) {
 		bomb_holder = &player;
 		bomb_timer = BombTime;
+		bomb_transfer_cooldown = 0.0f;
 		round_state = RoundState::Playing;
 	}
 
@@ -120,10 +121,12 @@ void Game::remove_player(Player *player) {
 		if (players.empty()) {
 			bomb_holder = nullptr;
 			bomb_timer = BombTime;
+			bomb_transfer_cooldown = 0.0f;
 			round_state = RoundState::Waiting;
 		} else {
 			bomb_holder = &players.front();
 			bomb_timer = BombTime;
+			bomb_transfer_cooldown = 0.0f;
 		}
 	}
 }
@@ -132,6 +135,9 @@ void Game::update(float elapsed) {
 	if (round_state == RoundState::Playing && bomb_holder != nullptr) {
 		bomb_timer -= elapsed;
 		if (bomb_timer < 0.0f) bomb_timer = 0.0f;
+	}
+	if (bomb_transfer_cooldown > 0.0f) {
+		bomb_transfer_cooldown -= elapsed;
 	}
 
 	//position/velocity update:
@@ -183,6 +189,15 @@ void Game::update(float elapsed) {
 			float len2 = glm::length2(p12);
 			if (len2 > (2.0f * PlayerRadius) * (2.0f * PlayerRadius)) continue;
 			if (len2 == 0.0f) continue;
+			if (round_state == RoundState::Playing && bomb_transfer_cooldown <= 0.0f) {
+				if (bomb_holder == &p1) {
+					bomb_holder = &p2;
+					bomb_transfer_cooldown = BombTransferCooldown;
+				} else if (bomb_holder == &p2) {
+					bomb_holder = &p1;
+					bomb_transfer_cooldown = BombTransferCooldown;
+				}
+			}
 			glm::vec2 dir = p12 / std::sqrt(len2);
 			//mirror velocity to be in separating direction:
 			glm::vec2 v12 = p2.velocity - p1.velocity;

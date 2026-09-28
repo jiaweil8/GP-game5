@@ -59,6 +59,7 @@ struct Game {
 
 	Player *bomb_holder = nullptr;
 	float bomb_timer = 10.0f;
+	float bomb_transfer_cooldown = 0.0f;
 	RoundState round_state = RoundState::Waiting;
 
 	std::mt19937 mt; //used for spawning players
@@ -81,7 +82,8 @@ struct Game {
 	inline static constexpr float PlayerRadius = 0.06f;
 	inline static constexpr float PlayerSpeed = 2.0f;
 	inline static constexpr float PlayerAccelHalflife = 0.25f;
-	inline static constexpr float BombTime = 10.0f;
+	inline static constexpr float BombTime = 30.0f;
+	inline static constexpr float BombTransferCooldown = 0.5f;
 	
 
 	//---- communication helpers ----
