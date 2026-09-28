@@ -48,6 +48,7 @@ struct Player {
 };
 
 struct Game {
+	//Round state shared by the server and clients.
 	enum class RoundState : uint8_t {
 		Waiting,
 		Playing,

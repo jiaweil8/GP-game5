@@ -156,6 +156,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 
 		for (auto const &player : game.players) {
 			glm::u8vec4 col = glm::u8vec4(player.color.x*255, player.color.y*255, player.color.z*255, 0xff);
+			//Mark the bomb holder with a red ring.
 			if (&player == game.bomb_holder) {
 				for (uint32_t a = 0; a < circle.size(); ++a) {
 					lines.draw(
@@ -165,6 +166,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 					);
 				}
 			}
+			//Show the explosion result near the losing player.
 			if (&player == game.round_loser) {
 				draw_text(player.position + glm::vec2(-0.12f, 0.12f), "BOOM!", 0.12f);
 			}

@@ -95,6 +95,7 @@ Player *Game::spawn_player() {
 
 	player.name = "Player " + std::to_string(next_player_number++);
 
+	//Start when a second player joins.
 	if (round_state == RoundState::Waiting && players.size() >= 2) {
 		bomb_holder = &players.front();
 		round_loser = nullptr;
@@ -119,6 +120,7 @@ void Game::remove_player(Player *player) {
 	}
 	assert(found);
 
+	//A round needs at least two players.
 	if (players.size() < 2) {
 		bomb_holder = nullptr;
 		round_loser = nullptr;
@@ -140,6 +142,7 @@ void Game::update(float elapsed) {
 	if (round_state == RoundState::Playing && bomb_holder != nullptr) {
 		bomb_timer -= elapsed;
 		if (bomb_timer <= 0.0f) {
+			//The current holder loses when the bomb explodes.
 			bomb_timer = 0.0f;
 			round_loser = bomb_holder;
 			bomb_holder = nullptr;
@@ -150,6 +153,7 @@ void Game::update(float elapsed) {
 	} else if (round_state == RoundState::RoundOver) {
 		round_over_timer -= elapsed;
 		if (round_over_timer <= 0.0f) {
+			//Give the next bomb to the player after the loser.
 			bomb_holder = &players.front();
 			bool use_next_player = false;
 			for (auto &player : players) {
@@ -219,6 +223,7 @@ void Game::update(float elapsed) {
 			float len2 = glm::length2(p12);
 			if (len2 > (2.0f * PlayerRadius) * (2.0f * PlayerRadius)) continue;
 			if (len2 == 0.0f) continue;
+			//The cooldown prevents rapid passes while players overlap.
 			if (round_state == RoundState::Playing && bomb_transfer_cooldown <= 0.0f) {
 				if (bomb_holder == &p1) {
 					bomb_holder = &p2;
@@ -268,6 +273,7 @@ void Game::send_state_message(Connection *connection_, Player *connection_player
 		connection.send(player.position);
 		connection.send(player.velocity);
 		connection.send(player.color);
+		//These flags rebuild the round pointers on each client.
 		connection.send(uint8_t(&player == bomb_holder));
 		connection.send(uint8_t(&player == round_loser));
 	
