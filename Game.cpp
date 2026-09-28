@@ -95,10 +95,17 @@ Player *Game::spawn_player() {
 
 	player.name = "Player " + std::to_string(next_player_number++);
 
+	if (bomb_holder == nullptr) {
+		bomb_holder = &player;
+		bomb_timer = BombTime;
+		round_state = RoundState::Playing;
+	}
+
 	return &player;
 }
 
 void Game::remove_player(Player *player) {
+	bool removed_bomb_holder = (player == bomb_holder);
 	bool found = false;
 	for (auto pi = players.begin(); pi != players.end(); ++pi) {
 		if (&*pi == player) {
@@ -108,9 +115,25 @@ void Game::remove_player(Player *player) {
 		}
 	}
 	assert(found);
+
+	if (removed_bomb_holder) {
+		if (players.empty()) {
+			bomb_holder = nullptr;
+			bomb_timer = BombTime;
+			round_state = RoundState::Waiting;
+		} else {
+			bomb_holder = &players.front();
+			bomb_timer = BombTime;
+		}
+	}
 }
 
 void Game::update(float elapsed) {
+	if (round_state == RoundState::Playing && bomb_holder != nullptr) {
+		bomb_timer -= elapsed;
+		if (bomb_timer < 0.0f) bomb_timer = 0.0f;
+	}
+
 	//position/velocity update:
 	for (auto &p : players) {
 		glm::vec2 dir = glm::vec2(0.0f, 0.0f);
@@ -206,6 +229,7 @@ void Game::send_state_message(Connection *connection_, Player *connection_player
 		connection.send(player.position);
 		connection.send(player.velocity);
 		connection.send(player.color);
+		connection.send(uint8_t(&player == bomb_holder));
 	
 		//NOTE: can't just 'send(name)' because player.name is not plain-old-data type.
 		//effectively: truncates player name to 255 chars
@@ -214,6 +238,9 @@ void Game::send_state_message(Connection *connection_, Player *connection_player
 		connection.send_buffer.insert(connection.send_buffer.end(), player.name.begin(), player.name.begin() + len);
 	};
 
+	//game state:
+	connection.send(uint8_t(round_state));
+	connection.send(bomb_timer);
 	//player count:
 	connection.send(uint8_t(players.size()));
 	if (connection_player) send_player(*connection_player);
@@ -252,7 +279,13 @@ bool Game::recv_state_message(Connection *connection_) {
 		at += sizeof(*val);
 	};
 
+	uint8_t state;
+	read(&state);
+	round_state = RoundState(state);
+	read(&bomb_timer);
+
 	players.clear();
+	bomb_holder = nullptr;
 	uint8_t player_count;
 	read(&player_count);
 	for (uint8_t i = 0; i < player_count; ++i) {
@@ -261,6 +294,9 @@ bool Game::recv_state_message(Connection *connection_) {
 		read(&player.position);
 		read(&player.velocity);
 		read(&player.color);
+		uint8_t has_bomb;
+		read(&has_bomb);
+		if (has_bomb) bomb_holder = &player;
 		uint8_t name_len;
 		read(&name_len);
 		//n.b. would probably be more efficient to directly copy from recv_buffer, but I think this is clearer:

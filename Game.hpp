@@ -5,6 +5,7 @@
 #include <string>
 #include <list>
 #include <random>
+#include <cstdint>
 
 struct Connection;
 
@@ -47,9 +48,18 @@ struct Player {
 };
 
 struct Game {
+	enum class RoundState : uint8_t {
+		Waiting,
+		Playing
+	};
+
 	std::list< Player > players; //(using list so they can have stable addresses)
 	Player *spawn_player(); //add player the end of the players list (may also, e.g., play some spawn anim)
 	void remove_player(Player *); //remove player from game (may also, e.g., play some despawn anim)
+
+	Player *bomb_holder = nullptr;
+	float bomb_timer = 10.0f;
+	RoundState round_state = RoundState::Waiting;
 
 	std::mt19937 mt; //used for spawning players
 	uint32_t next_player_number = 1; //used for naming players
@@ -71,6 +81,7 @@ struct Game {
 	inline static constexpr float PlayerRadius = 0.06f;
 	inline static constexpr float PlayerSpeed = 2.0f;
 	inline static constexpr float PlayerAccelHalflife = 0.25f;
+	inline static constexpr float BombTime = 10.0f;
 	
 
 	//---- communication helpers ----

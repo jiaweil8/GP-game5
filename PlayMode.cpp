@@ -11,6 +11,7 @@
 
 #include <random>
 #include <array>
+#include <cmath>
 
 PlayMode::PlayMode(Client &client_) : client(client_) {
 }
@@ -155,6 +156,15 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 
 		for (auto const &player : game.players) {
 			glm::u8vec4 col = glm::u8vec4(player.color.x*255, player.color.y*255, player.color.z*255, 0xff);
+			if (&player == game.bomb_holder) {
+				for (uint32_t a = 0; a < circle.size(); ++a) {
+					lines.draw(
+						glm::vec3(player.position + 1.4f * Game::PlayerRadius * circle[a], 0.0f),
+						glm::vec3(player.position + 1.4f * Game::PlayerRadius * circle[(a+1)%circle.size()], 0.0f),
+						glm::u8vec4(0xff, 0x20, 0x20, 0xff)
+					);
+				}
+			}
 			if (&player == &game.players.front()) {
 				//mark current player (which server sends first):
 				lines.draw(
@@ -178,6 +188,14 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 
 			draw_text(player.position + glm::vec2(0.0f, -0.1f + Game::PlayerRadius), player.name, 0.09f);
 		}
+
+		std::string status = "Waiting";
+		if (game.round_state == Game::RoundState::Playing) status = "Playing";
+		draw_text(
+			glm::vec2(Game::ArenaMin.x + 0.03f, Game::ArenaMax.y - 0.12f),
+			status + "  Bomb: " + std::to_string(int(std::ceil(game.bomb_timer))),
+			0.09f
+		);
 	}
 	GL_ERRORS();
 }
