@@ -13,10 +13,13 @@
 #include <array>
 #include <cmath>
 
-PlayMode::PlayMode(Client &client_) : client(client_) {
+PlayMode::PlayMode(Client &client_)
+	: client(client_), text_renderer(data_path("PaytoneOne-Regular.ttf")) {
+	font_test_text = text_renderer.make_text("PAYTONE FONT TEST");
 }
 
 PlayMode::~PlayMode() {
+	text_renderer.destroy_text(font_test_text);
 }
 
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
@@ -207,5 +210,13 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 			0.09f
 		);
 	}
+
+	text_renderer.draw_text(
+		font_test_text,
+		glm::vec2(20.0f, float(drawable_size.y) - 70.0f),
+		0.8f,
+		glm::vec3(1.0f, 0.85f, 0.2f),
+		drawable_size
+	);
 	GL_ERRORS();
 }

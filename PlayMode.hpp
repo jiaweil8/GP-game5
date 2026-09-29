@@ -2,6 +2,7 @@
 
 #include "Connection.hpp"
 #include "Game.hpp"
+#include "TextRenderer.hpp"
 
 #include <glm/glm.hpp>
 
@@ -30,5 +31,9 @@ struct PlayMode : Mode {
 
 	//connection to server:
 	Client &client;
+
+	//font test for the first rendering step:
+	TextRenderer text_renderer;
+	TextTexture font_test_text;
 
 };
