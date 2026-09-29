@@ -3,6 +3,7 @@
 #include "Connection.hpp"
 #include "Game.hpp"
 #include "TextRenderer.hpp"
+#include "ShapeRenderer.hpp"
 
 #include <glm/glm.hpp>
 
@@ -32,8 +33,10 @@ struct PlayMode : Mode {
 	//connection to server:
 	Client &client;
 
-	//font test for the first rendering step:
+	//cached status text texture, rebuilt only when the message changes.
 	TextRenderer text_renderer;
-	TextTexture font_test_text;
+	TextTexture status_text;
+	std::string current_status;
+	ShapeRenderer shape_renderer;
 
 };

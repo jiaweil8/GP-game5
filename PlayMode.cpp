@@ -15,11 +15,10 @@
 
 PlayMode::PlayMode(Client &client_)
 	: client(client_), text_renderer(data_path("PaytoneOne-Regular.ttf")) {
-	font_test_text = text_renderer.make_text("PAYTONE FONT TEST");
 }
 
 PlayMode::~PlayMode() {
-	text_renderer.destroy_text(font_test_text);
+	text_renderer.destroy_text(status_text);
 }
 
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
@@ -197,25 +196,36 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 			draw_text(player.position + glm::vec2(0.0f, -0.1f + Game::PlayerRadius), player.name, 0.09f);
 		}
 
-		std::string status = "Waiting for another player";
-		if (game.round_state == Game::RoundState::Playing) {
-			status = "Playing  Bomb: " + std::to_string(int(std::ceil(game.bomb_timer)));
-		} else if (game.round_state == Game::RoundState::RoundOver) {
-			status = "Round over";
-			if (game.round_loser != nullptr) status = game.round_loser->name + " lost!";
-		}
-		draw_text(
-			glm::vec2(Game::ArenaMin.x + 0.03f, Game::ArenaMax.y - 0.12f),
-			status,
-			0.09f
-		);
 	}
 
+	//Temporary test for the filled shape renderer.
+	shape_renderer.draw_circle(
+		world_to_clip,
+		glm::vec2(Game::ArenaMax.x - 0.14f, Game::ArenaMax.y - 0.14f),
+		0.08f,
+		glm::u8vec4(0x20, 0xd0, 0xc0, 0xff)
+	);
+
+	std::string status = "Waiting for another player";
+	glm::vec3 status_color(1.0f, 0.85f, 0.2f);
+	if (game.round_state == Game::RoundState::Playing) {
+		status = "Playing  Bomb: " + std::to_string(int(std::ceil(game.bomb_timer)));
+		status_color = glm::vec3(1.0f);
+	} else if (game.round_state == Game::RoundState::RoundOver) {
+		status = "Round over";
+		if (game.round_loser != nullptr) status = game.round_loser->name + " lost!";
+		status_color = glm::vec3(1.0f, 0.25f, 0.15f);
+	}
+	if (status != current_status) {
+		text_renderer.destroy_text(status_text);
+		status_text = text_renderer.make_text(status);
+		current_status = status;
+	}
 	text_renderer.draw_text(
-		font_test_text,
-		glm::vec2(20.0f, float(drawable_size.y) - 70.0f),
-		0.8f,
-		glm::vec3(1.0f, 0.85f, 0.2f),
+		status_text,
+		glm::vec2(40.0f, 24.0f),
+		0.7f,
+		status_color,
 		drawable_size
 	);
 	GL_ERRORS();
