@@ -1,10 +1,10 @@
-# (TODO: your game's title)
+# Hot Potato
 
-Author: (TODO: your name)
+Author: Lee(jiaweil8)
 
-Design: (TODO: In two sentences or fewer, describe what is new and interesting about your game.)
+Design: This is a multiplayer hot potato game where players collide to pass a timed bomb. Players can wrap around all four sides of the arena to chase or escape from each other.
 
-Networking: (TODO: How does your game implement client/server multiplayer? What messages are transmitted? Where in the code?)
+Networking: In Game.hpp and Game.cpp, I added the bomb holder, bomb timer, round state, and losing player to the server game state and the state message. The server updates the timer and bomb transfers, and PlayMode.cpp receives and displays the same state on every client.
 
 Screen Shot:
 
@@ -12,9 +12,9 @@ Screen Shot:
 
 How To Play:
 
-(TODO: describe the controls and (if needed) goals/strategy.)
+WASD to move; Bump into other player to get rid of the bomb; 
 
-Sources: (TODO: list a source URL for any assets you did not create yourself. Make sure you have a license for the asset.)
+Sources: Google font Paytone https://fonts.google.com/specimen/Paytone+One
 
 This game was built with [NEST](NEST.md).
 
