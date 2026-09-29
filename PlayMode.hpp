@@ -9,6 +9,7 @@
 
 #include <vector>
 #include <deque>
+#include <map>
 
 struct PlayMode : Mode {
 	PlayMode(Client &client);
@@ -37,6 +38,8 @@ struct PlayMode : Mode {
 	TextRenderer text_renderer;
 	TextTexture status_text;
 	std::string current_status;
+	TextTexture boom_text;
+	std::map< std::string, TextTexture > player_name_textures;
 	ShapeRenderer shape_renderer;
 
 };

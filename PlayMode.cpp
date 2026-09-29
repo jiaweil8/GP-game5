@@ -1,24 +1,22 @@
 #include "PlayMode.hpp"
 
-#include "DrawLines.hpp"
 #include "gl_errors.hpp"
 #include "data_path.hpp"
 #include "hex_dump.hpp"
 
-#include <glm/gtc/type_ptr.hpp>
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/string_cast.hpp>
-
-#include <random>
-#include <array>
 #include <cmath>
 
 PlayMode::PlayMode(Client &client_)
 	: client(client_), text_renderer(data_path("PaytoneOne-Regular.ttf")) {
+	boom_text = text_renderer.make_text("BOOM!");
 }
 
 PlayMode::~PlayMode() {
 	text_renderer.destroy_text(status_text);
+	text_renderer.destroy_text(boom_text);
+	for (auto &entry : player_name_textures) {
+		text_renderer.destroy_text(entry.second);
+	}
 }
 
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
@@ -106,17 +104,7 @@ void PlayMode::update(float elapsed) {
 }
 
 void PlayMode::draw(glm::uvec2 const &drawable_size) {
-
-	static std::array< glm::vec2, 16 > const circle = [](){
-		std::array< glm::vec2, 16 > ret;
-		for (uint32_t a = 0; a < ret.size(); ++a) {
-			float ang = a / float(ret.size()) * 2.0f * float(M_PI);
-			ret[a] = glm::vec2(std::cos(ang), std::sin(ang));
-		}
-		return ret;
-	}();
-
-	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+	glClearColor(0.05f, 0.07f, 0.11f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
 	glDisable(GL_DEPTH_TEST);
 	
@@ -134,77 +122,119 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		0.0f, 0.0f, 1.0f, 0.0f,
 		0.0f, 0.0f, 0.0f, 1.0f
 	);
+	auto world_to_pixel = [&](glm::vec2 const &world) {
+		glm::vec4 clip = world_to_clip * glm::vec4(world, 0.0f, 1.0f);
+		return glm::vec2(
+			(clip.x / clip.w * 0.5f + 0.5f) * float(drawable_size.x),
+			(0.5f - clip.y / clip.w * 0.5f) * float(drawable_size.y)
+		);
+	};
 
-	{
-		DrawLines lines(world_to_clip);
+	//Main game graphics use filled triangles.
+	shape_renderer.draw_rectangle(
+		world_to_clip,
+		Game::ArenaMin,
+		Game::ArenaMax,
+		glm::u8vec4(0x32, 0xd1, 0xc6, 0xff)
+	);
+	shape_renderer.draw_rectangle(
+		world_to_clip,
+		Game::ArenaMin + glm::vec2(0.02f),
+		Game::ArenaMax - glm::vec2(0.02f),
+		glm::u8vec4(0x17, 0x24, 0x35, 0xff)
+	);
 
-		//helper:
-		auto draw_text = [&](glm::vec2 const &at, std::string const &text, float H) {
-			lines.draw_text(text,
-				glm::vec3(at.x, at.y, 0.0),
-				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
-				glm::u8vec4(0x00, 0x00, 0x00, 0x00));
-			float ofs = (1.0f / scale) / drawable_size.y;
-			lines.draw_text(text,
-				glm::vec3(at.x + ofs, at.y + ofs, 0.0),
-				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
-				glm::u8vec4(0xff, 0xff, 0xff, 0x00));
-		};
-
-		lines.draw(glm::vec3(Game::ArenaMin.x, Game::ArenaMin.y, 0.0f), glm::vec3(Game::ArenaMax.x, Game::ArenaMin.y, 0.0f), glm::u8vec4(0xff, 0x00, 0xff, 0xff));
-		lines.draw(glm::vec3(Game::ArenaMin.x, Game::ArenaMax.y, 0.0f), glm::vec3(Game::ArenaMax.x, Game::ArenaMax.y, 0.0f), glm::u8vec4(0xff, 0x00, 0xff, 0xff));
-		lines.draw(glm::vec3(Game::ArenaMin.x, Game::ArenaMin.y, 0.0f), glm::vec3(Game::ArenaMin.x, Game::ArenaMax.y, 0.0f), glm::u8vec4(0xff, 0x00, 0xff, 0xff));
-		lines.draw(glm::vec3(Game::ArenaMax.x, Game::ArenaMin.y, 0.0f), glm::vec3(Game::ArenaMax.x, Game::ArenaMax.y, 0.0f), glm::u8vec4(0xff, 0x00, 0xff, 0xff));
-
-		for (auto const &player : game.players) {
-			glm::u8vec4 col = glm::u8vec4(player.color.x*255, player.color.y*255, player.color.z*255, 0xff);
-			//Mark the bomb holder with a red ring.
-			if (&player == game.bomb_holder) {
-				for (uint32_t a = 0; a < circle.size(); ++a) {
-					lines.draw(
-						glm::vec3(player.position + 1.4f * Game::PlayerRadius * circle[a], 0.0f),
-						glm::vec3(player.position + 1.4f * Game::PlayerRadius * circle[(a+1)%circle.size()], 0.0f),
-						glm::u8vec4(0xff, 0x20, 0x20, 0xff)
-					);
-				}
-			}
-			//Show the explosion result near the losing player.
-			if (&player == game.round_loser) {
-				draw_text(player.position + glm::vec2(-0.12f, 0.12f), "BOOM!", 0.12f);
-			}
-			if (&player == &game.players.front()) {
-				//mark current player (which server sends first):
-				lines.draw(
-					glm::vec3(player.position + Game::PlayerRadius * glm::vec2(-0.5f,-0.5f), 0.0f),
-					glm::vec3(player.position + Game::PlayerRadius * glm::vec2( 0.5f, 0.5f), 0.0f),
-					col
-				);
-				lines.draw(
-					glm::vec3(player.position + Game::PlayerRadius * glm::vec2(-0.5f, 0.5f), 0.0f),
-					glm::vec3(player.position + Game::PlayerRadius * glm::vec2( 0.5f,-0.5f), 0.0f),
-					col
-				);
-			}
-			for (uint32_t a = 0; a < circle.size(); ++a) {
-				lines.draw(
-					glm::vec3(player.position + Game::PlayerRadius * circle[a], 0.0f),
-					glm::vec3(player.position + Game::PlayerRadius * circle[(a+1)%circle.size()], 0.0f),
-					col
-				);
-			}
-
-			draw_text(player.position + glm::vec2(0.0f, -0.1f + Game::PlayerRadius), player.name, 0.09f);
-		}
-
+	//Draw the explosion behind the losing player.
+	if (game.round_loser != nullptr) {
+		shape_renderer.draw_circle(
+			world_to_clip,
+			game.round_loser->position,
+			0.18f,
+			glm::u8vec4(0xff, 0x45, 0x20, 0xff)
+		);
+		shape_renderer.draw_circle(
+			world_to_clip,
+			game.round_loser->position,
+			0.11f,
+			glm::u8vec4(0xff, 0xd1, 0x36, 0xff)
+		);
 	}
 
-	//Temporary test for the filled shape renderer.
-	shape_renderer.draw_circle(
-		world_to_clip,
-		glm::vec2(Game::ArenaMax.x - 0.14f, Game::ArenaMax.y - 0.14f),
-		0.08f,
-		glm::u8vec4(0x20, 0xd0, 0xc0, 0xff)
-	);
+	for (auto const &player : game.players) {
+		glm::u8vec4 color = glm::u8vec4(player.color.x * 255, player.color.y * 255, player.color.z * 255, 0xff);
+		shape_renderer.draw_circle(
+			world_to_clip,
+			player.position + glm::vec2(0.012f, -0.012f),
+			Game::PlayerRadius,
+			glm::u8vec4(0x08, 0x0c, 0x12, 0xff)
+		);
+		shape_renderer.draw_circle(world_to_clip, player.position, Game::PlayerRadius, color);
+
+		if (&player == &game.players.front()) {
+			shape_renderer.draw_circle(
+				world_to_clip,
+				player.position,
+				0.016f,
+				glm::u8vec4(0xff, 0xff, 0xff, 0xff)
+			);
+		}
+		if (&player == game.bomb_holder) {
+			glm::vec2 bomb_position = player.position + glm::vec2(0.0f, Game::PlayerRadius + 0.035f);
+			shape_renderer.draw_circle(
+				world_to_clip,
+				bomb_position,
+				0.035f,
+				glm::u8vec4(0x08, 0x0c, 0x12, 0xff)
+			);
+			shape_renderer.draw_circle(
+				world_to_clip,
+				bomb_position,
+				0.015f,
+				glm::u8vec4(0xff, 0x6b, 0x35, 0xff)
+			);
+			shape_renderer.draw_circle(
+				world_to_clip,
+				bomb_position + glm::vec2(0.022f, 0.025f),
+				0.010f,
+				glm::u8vec4(0xff, 0xd1, 0x36, 0xff)
+			);
+		}
+	}
+
+	//Player name textures are created once and reused.
+	for (auto const &player : game.players) {
+		auto found = player_name_textures.find(player.name);
+		if (found == player_name_textures.end()) {
+			TextTexture texture = text_renderer.make_text(player.name);
+			found = player_name_textures.emplace(player.name, texture).first;
+		}
+		float name_scale = 0.38f;
+		glm::vec2 name_position = world_to_pixel(
+			player.position + glm::vec2(0.0f, -Game::PlayerRadius - 0.035f)
+		);
+		name_position.x -= 0.5f * float(found->second.width) * name_scale;
+		text_renderer.draw_text(
+			found->second,
+			name_position,
+			name_scale,
+			glm::vec3(0.9f, 0.94f, 1.0f),
+			drawable_size
+		);
+	}
+	if (game.round_loser != nullptr) {
+		float boom_scale = 0.55f;
+		glm::vec2 boom_position = world_to_pixel(
+			game.round_loser->position + glm::vec2(0.0f, 0.20f)
+		);
+		boom_position.x -= 0.5f * float(boom_text.width) * boom_scale;
+		text_renderer.draw_text(
+			boom_text,
+			boom_position,
+			boom_scale,
+			glm::vec3(1.0f, 0.85f, 0.2f),
+			drawable_size
+		);
+	}
 
 	std::string status = "Waiting for another player";
 	glm::vec3 status_color(1.0f, 0.85f, 0.2f);
