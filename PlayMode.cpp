@@ -130,7 +130,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		);
 	};
 
-	//Main game graphics use filled triangles.
+	//Main game graphics use filled triangles 
 	shape_renderer.draw_rectangle(
 		world_to_clip,
 		Game::ArenaMin,
